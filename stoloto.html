@@ -1,0 +1,624 @@
+<!doctype html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>СТОЛОТО ТИРАЖИ</title>
+    <style>
+        /* === Gruvbox — тема по умолчанию === */
+        :root {
+            --bg0: #282828;
+            --bg1: #3c3836;
+            --bg2: #504945;
+            --bg3: #665c54;
+            --fg0: #fbf1c7;
+            --fg1: #ebdbb2;
+            --fg2: #d5c4a1;
+            --yellow: #d79921;
+            --orange: #d65d0e;
+        }
+
+        * { box-sizing: border-box; }
+
+        html, body {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+        }
+
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: var(--bg0);
+            color: var(--fg1);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* === Вкладки === */
+        .tabs-container {
+            background: var(--bg1);
+            border-bottom: 2px solid var(--bg2);
+            display: flex;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .tabs-nav { display: flex; gap: 0; }
+
+        .tab-btn {
+            background: transparent;
+            border: none;
+            color: var(--fg2);
+            padding: 12px 22px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            transition: all 0.2s ease;
+        }
+
+        .tab-btn:hover { color: var(--fg0); }
+
+        .tab-btn.active {
+            color: var(--yellow);
+            border-bottom-color: var(--yellow);
+        }
+
+        /* === Триколоночный layout === */
+        .main-container {
+            flex: 1;
+            min-height: 0;
+            width: 100%;
+            display: flex;
+        }
+
+        /* === Общая панель === */
+        .panel {
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+            min-width: 0;
+        }
+
+        .panel-header {
+            flex-shrink: 0;
+            background: var(--bg2);
+            color: var(--fg0);
+            padding: 10px 14px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-bottom: 1px solid var(--bg3);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .panel-header .sub { color: var(--fg2); font-weight: 400; text-transform: none; letter-spacing: 0; }
+
+        /* === Скролл-область панели === */
+        .panel-scroll {
+            flex: 1;
+            min-height: 0;
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding: 10px;
+            background: var(--bg1);
+        }
+
+        .panel-scroll::-webkit-scrollbar { width: 8px; height: 8px; }
+        .panel-scroll::-webkit-scrollbar-track { background: var(--bg2); }
+        .panel-scroll::-webkit-scrollbar-thumb {
+            background: var(--bg3);
+            border-radius: 4px;
+            border: 2px solid var(--bg1);
+        }
+        .panel-scroll::-webkit-scrollbar-thumb:hover { background: var(--yellow); }
+
+        /* === Ширины колонок === */
+        .panel-left  { width: 310px; flex-shrink: 0; border-right: 1px solid var(--bg3); }
+        .panel-right { width: 330px; flex-shrink: 0; border-left: 1px solid var(--bg3); }
+        .panel-center { flex: 1; background: var(--bg1); }
+
+        /* === Таблица тиражей: своя прокрутка, липкая шапка === */
+        .panel-center .panel-scroll {
+            overflow: auto;
+            padding: 0;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 350px;
+        }
+
+        th, td {
+            padding: 6px 10px;
+            text-align: left;
+            border-bottom: 1px solid var(--bg2);
+            white-space: nowrap;
+        }
+
+        th {
+            background: var(--bg2);
+            font-weight: 600;
+            font-size: 12px;
+            color: var(--fg2);
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            box-shadow: 0 1px 0 var(--bg3);
+        }
+
+        td.draw-id {
+            font-weight: 600;
+            color: var(--fg0);
+        }
+
+        tr:hover td { background: rgba(255,255,255,0.03); }
+
+        /* === Числа === */
+        .number-cell {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            cursor: pointer;
+            margin: 2px;
+            font-size: 12px;
+            font-weight: 500;
+            border: 2px solid var(--bg2);
+            transition: all 0.2s ease;
+            background: var(--bg2);
+            color: var(--fg1);
+            user-select: none;
+        }
+
+        .number-cell:hover {
+            background: var(--bg3);
+            border-color: var(--fg2);
+        }
+
+        .number-cell.selected {
+            background: var(--yellow);
+            color: var(--bg0);
+            border-color: var(--yellow);
+            font-weight: bold;
+        }
+
+        .number-cell.highlighted {
+            background: var(--yellow);
+            color: var(--bg0);
+            border-color: var(--yellow);
+            font-weight: bold;
+            animation: pulse 0.3s ease;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50%       { transform: scale(1.15); }
+        }
+
+        /* === Панель чисел === */
+        #numberPanel {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 3px;
+            padding: 2px 0 8px;
+        }
+
+        /* === Статистика === */
+        .stats-header {
+            display: flex;
+            justify-content: space-between;
+            font-weight: bold;
+            color: var(--fg2);
+            padding-bottom: 8px;
+            margin-bottom: 10px;
+            border-bottom: 1px solid var(--bg2);
+            font-size: 12px;
+        }
+
+        .stat-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 6px 8px;
+            margin-bottom: 4px;
+            background: var(--bg2);
+            border-radius: 4px;
+        }
+
+        .stat-number {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            background: var(--bg3);
+            color: var(--fg0);
+            font-weight: bold;
+            flex-shrink: 0;
+            font-size: 12px;
+        }
+
+        .stat-count { color: var(--yellow); font-weight: bold; font-size: 13px; }
+
+        .empty-stats {
+            text-align: center;
+            padding: 15px;
+            color: var(--fg2);
+            font-style: italic;
+            font-size: 13px;
+        }
+
+        /* === Кнопки === */
+        .clear-btn {
+            display: block;
+            width: 100%;
+            padding: 8px;
+            margin-top: 6px;
+            background: var(--bg2);
+            border: 1px solid var(--bg3);
+            border-radius: 4px;
+            color: var(--fg1);
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .clear-btn:hover { background: var(--bg3); color: var(--yellow); }
+
+        /* === Адаптивность: стек с независимым скроллом каждой панели === */
+        @media (max-width: 1000px) {
+            body { overflow: hidden; }
+            .main-container {
+                flex-direction: column;
+                overflow-y: auto;
+            }
+            .panel-left  { width: 100%; border-right: none; border-bottom: 1px solid var(--bg3); height: 34vh; }
+            .panel-right { width: 100%; border-left: none;  border-top: 1px solid var(--bg3);    height: 34vh; }
+            .panel-center { width: 100%; height: 34vh; border-bottom: 1px solid var(--bg3); }
+            .panel-header { text-align: center; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- === Вкладки === -->
+    <div class="tabs-container">
+        <div class="tabs-nav">
+            <button class="tab-btn active" data-tab="v10">Вариант 1: до 10 чисел</button>
+            <button class="tab-btn" data-tab="v4">Вариант 2: до 4 чисел</button>
+        </div>
+    </div>
+
+    <!-- === Три колонки: выбор | тиражи | статистика === -->
+    <div class="main-container">
+
+        <!-- Левая панель: выбор чисел -->
+        <div class="panel panel-left">
+            <div class="panel-header">Панель выбора чисел</div>
+            <div class="panel-scroll">
+                <div id="numberPanel"></div>
+                <button class="clear-btn" id="clearButton">Очистить выбор</button>
+            </div>
+        </div>
+
+        <!-- Центральная панель: таблица тиражей (независимая прокрутка) -->
+        <div class="panel panel-center">
+            <div class="panel-header" id="drawsHeader">Таблица тиражей</div>
+            <div class="panel-scroll">
+                <table id="drawsTable">
+                    <thead>
+                        <tr>
+                            <th>Тираж</th>
+                            <th>Числа</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Правая панель: статистика (независимая прокрутка) -->
+        <div class="panel panel-right">
+            <div class="panel-header" id="statsHeader">Статистика выбранных чисел</div>
+            <div class="panel-scroll" id="statsContainer">
+                <div class="empty-stats">Выберите числа для отображения статистики</div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // === Данные — Вариант 1: 10 чисел ===
+        const drawsV10 = [
+            { id: 714, numbers: [14, 49, 23, 34, 17, 31, 72, 66, 41, 64] },
+            { id: 713, numbers: [62, 15, 35, 8, 89, 70, 27, 52, 17, 3] },
+            { id: 712, numbers: [31, 12, 56, 87, 29, 50, 70, 65, 11, 88] },
+            { id: 711, numbers: [55, 9, 37, 42, 36, 14, 1, 21, 35, 15] },
+            { id: 710, numbers: [1, 47, 42, 83, 80, 5, 10, 12, 32, 58] },
+            { id: 709, numbers: [63, 68, 78, 2, 11, 28, 25, 81, 65, 54] },
+            { id: 708, numbers: [53, 81, 16, 29, 62, 41, 48, 17, 66, 21] },
+            { id: 707, numbers: [51, 28, 18, 12, 76, 15, 3, 20, 59, 53] },
+            { id: 706, numbers: [34, 50, 3, 71, 40, 78, 29, 7, 17, 83] },
+            { id: 705, numbers: [53, 32, 37, 82, 8, 60, 23, 63, 90, 17] },
+            { id: 704, numbers: [30, 81, 18, 24, 68, 36, 54, 34, 83, 56] },
+            { id: 703, numbers: [73, 23, 74, 1, 56, 3, 13, 36, 67, 27] },
+            { id: 702, numbers: [64, 11, 33, 61, 13, 55, 12, 36, 77, 76] },
+            { id: 701, numbers: [64, 2, 61, 26, 16, 35, 9, 31, 38, 18] },
+            { id: 700, numbers: [35, 23, 19, 31, 20, 57, 72, 24, 76, 27] },
+            { id: 699, numbers: [3, 37, 15, 16, 63, 9, 12, 67, 51, 40] },
+            { id: 698, numbers: [67, 38, 34, 6, 45, 35, 28, 30, 58, 80] },
+            { id: 697, numbers: [90, 87, 42, 47, 83, 33, 38, 11, 19, 10] },
+            { id: 696, numbers: [80, 83, 74, 49, 29, 53, 50, 4, 85, 63] },
+            { id: 695, numbers: [57, 38, 83, 49, 9, 48, 36, 28, 16, 76] },
+            { id: 694, numbers: [26, 14, 9, 81, 39, 72, 32, 38, 77, 58] },
+            { id: 693, numbers: [61, 75, 1, 65, 67, 35, 2, 85, 48, 81] },
+            { id: 692, numbers: [10, 11, 6, 58, 1, 12, 18, 8, 55, 32] },
+            { id: 691, numbers: [10, 63, 68, 32, 34, 85, 30, 79, 70, 59] },
+            { id: 690, numbers: [43, 10, 1, 37, 82, 90, 77, 67, 28, 46] },
+            { id: 689, numbers: [44, 1, 61, 50, 23, 85, 29, 45, 22, 57] },
+            { id: 688, numbers: [82, 36, 4, 18, 42, 83, 75, 22, 7, 11] },
+            { id: 687, numbers: [12, 48, 37, 52, 58, 26, 32, 79, 35, 13] },
+            { id: 686, numbers: [51, 16, 31, 6, 79, 36, 44, 55, 68, 30] },
+            { id: 685, numbers: [53, 27, 29, 14, 43, 54, 61, 45, 16, 5] },
+            { id: 684, numbers: [18, 46, 8, 65, 39, 15, 3, 66, 27, 59] },
+            { id: 683, numbers: [10, 37, 39, 51, 34, 4, 42, 1, 30, 20] },
+            { id: 682, numbers: [46, 1, 90, 19, 71, 11, 45, 58, 73, 74] },
+            { id: 681, numbers: [57, 63, 69, 50, 39, 70, 58, 17, 62, 20] },
+            { id: 680, numbers: [1, 44, 79, 2, 4, 46, 15, 61, 30, 75] },
+            { id: 679, numbers: [58, 45, 70, 39, 14, 52, 78, 9, 57, 46] },
+            { id: 678, numbers: [57, 52, 89, 56, 60, 23, 87, 17, 58, 81] },
+            { id: 677, numbers: [75, 60, 40, 2, 36, 25, 31, 90, 32, 6] },
+            { id: 676, numbers: [64, 35, 72, 34, 68, 63, 87, 70, 46, 30] },
+            { id: 675, numbers: [34, 78, 57, 1, 79, 14, 81, 32, 10, 30] },
+            { id: 674, numbers: [39, 8, 74, 45, 87, 32, 82, 59, 37, 67] },
+            { id: 673, numbers: [61, 22, 75, 29, 52, 72, 11, 37, 82, 45] },
+            { id: 672, numbers: [43, 72, 50, 41, 78, 75, 90, 40, 14, 53] },
+            { id: 671, numbers: [52, 43, 77, 76, 9, 69, 87, 54, 4, 6] },
+            { id: 670, numbers: [33, 23, 18, 11, 56, 48, 43, 65, 16, 12] },
+            { id: 669, numbers: [36, 66, 81, 8, 83, 77, 90, 55, 27, 75] },
+            { id: 668, numbers: [50, 58, 45, 38, 6, 23, 30, 83, 16, 40] },
+            { id: 667, numbers: [68, 16, 65, 5, 24, 20, 2, 57, 43, 67] },
+            { id: 666, numbers: [7, 10, 8, 16, 64, 72, 27, 78, 15, 51] },
+            { id: 665, numbers: [47, 88, 71, 3, 49, 34, 72, 74, 60, 48] },
+            { id: 664, numbers: [51, 2, 50, 21, 70, 83, 63, 32, 44, 37] },
+            { id: 714, numbers: [14, 49, 23, 34, 17, 31, 72, 66, 41, 64] }
+        ];
+
+        // === Данные — Вариант 2: переменное (до 4) ===
+        const drawsV4 = [
+            { id: 714, numbers: [28, 65, 70] },
+            { id: 713, numbers: [28, 29, 61, 72] },
+            { id: 712, numbers: [19, 82, 84] },
+            { id: 711, numbers: [39, 40, 48, 87] },
+            { id: 710, numbers: [3, 8, 81, 90] },
+            { id: 709, numbers: [30, 32, 56, 89] },
+            { id: 708, numbers: [26, 36, 40, 90] },
+            { id: 707, numbers: [16, 33, 60, 62] },
+            { id: 706, numbers: [10, 73, 80] },
+            { id: 705, numbers: [9, 19, 41, 55] },
+            { id: 704, numbers: [3, 17] },
+            { id: 703, numbers: [50, 55] },
+            { id: 702, numbers: [4, 6, 46, 78] },
+            { id: 701, numbers: [22, 48, 77, 79] },
+            { id: 700, numbers: [29, 33, 66] },
+            { id: 699, numbers: [17, 21, 45, 84] },
+            { id: 698, numbers: [73, 43, 60] },
+            { id: 697, numbers: [59, 74, 77, 86] },
+            { id: 696, numbers: [10, 78, 84] },
+            { id: 695, numbers: [32, 88] },
+            { id: 694, numbers: [73, 85] },
+            { id: 693, numbers: [21, 25, 66, 68] },
+            { id: 692, numbers: [62, 77, 79] },
+            { id: 691, numbers: [41, 71, 83, 87] },
+            { id: 690, numbers: [11, 33, 71] },
+            { id: 689, numbers: [46, 53, 70, 81] },
+            { id: 688, numbers: [48, 56, 64] },
+            { id: 687, numbers: [19, 21, 56, 60] },
+            { id: 686, numbers: [33, 41, 75] },
+            { id: 685, numbers: [26, 62, 84, 87] },
+            { id: 684, numbers: [12, 21, 22] },
+            { id: 683, numbers: [17, 18] },
+            { id: 682, numbers: [3, 4, 72] },
+            { id: 681, numbers: [18, 29, 53, 79] },
+            { id: 680, numbers: [47, 65, 78] },
+            { id: 679, numbers: [32, 55, 56, 63] },
+            { id: 678, numbers: [22, 36, 72] },
+            { id: 677, numbers: [55] },
+            { id: 676, numbers: [10, 23, 55, 90] },
+            { id: 675, numbers: [28, 72, 89] },
+            { id: 674, numbers: [9, 24, 27, 44] },
+            { id: 673, numbers: [49, 88, 90] },
+            { id: 672, numbers: [10, 37, 38, 79] },
+            { id: 671, numbers: [5, 51, 67, 79] },
+            { id: 670, numbers: [69, 73, 79] },
+            { id: 669, numbers: [6, 15, 19, 44] },
+            { id: 668, numbers: [36, 37, 77] },
+            { id: 667, numbers: [18, 33, 71, 86] },
+            { id: 666, numbers: [1, 5, 35] },
+            { id: 665, numbers: [7, 17, 63, 73] },
+            { id: 664, numbers: [39, 60, 79, 89] },
+            { id: 714, numbers: [28, 65, 70] }
+        ];
+
+        const drawsMap = { v10: drawsV10, v4: drawsV4 };
+
+        let numberPanelCells = [];
+        let tableNumberCells = [];
+        let currentTab = 'v10';
+
+        // === Создание таблицы тиражей ===
+        function createDrawsTable() {
+            const tbody = document.getElementById('drawsTable').querySelector('tbody');
+            tbody.innerHTML = '';
+            tableNumberCells = [];
+
+            drawsMap[currentTab].forEach((draw) => {
+                const row = document.createElement('tr');
+
+                const idCell = document.createElement('td');
+                idCell.textContent = draw.id;
+                idCell.className = 'draw-id';
+                row.appendChild(idCell);
+
+                const numbersCell = document.createElement('td');
+                numbersCell.style.color = 'var(--fg1)';
+
+                draw.numbers.forEach((num) => {
+                    const span = document.createElement('span');
+                    span.className = 'number-cell';
+                    span.textContent = num;
+                    span.dataset.number = num;
+                    span.addEventListener('click', () => toggleSelectionByNumber(num));
+                    numbersCell.appendChild(span);
+                    tableNumberCells.push(span);
+                });
+
+                row.appendChild(numbersCell);
+                tbody.appendChild(row);
+            });
+        }
+
+        // === Панель чисел ===
+        function createNumberPanel() {
+            const panel = document.getElementById('numberPanel');
+            panel.innerHTML = '';
+            numberPanelCells = [];
+
+            for (let i = 1; i <= 90; i++) {
+                const cell = document.createElement('div');
+                cell.className = 'number-cell';
+                cell.textContent = i;
+                cell.dataset.number = i;
+                cell.addEventListener('click', () => toggleSelectionByNumber(i));
+                panel.appendChild(cell);
+                numberPanelCells.push(cell);
+            }
+        }
+
+        // === Синхронизация выделения ===
+        function toggleSelectionByNumber(num) {
+            const numInt = parseInt(num);
+            const panelCell = numberPanelCells.find(c => parseInt(c.dataset.number) === numInt);
+            const tableCells = tableNumberCells.filter(c => parseInt(c.dataset.number) === numInt);
+
+            const isSelected = panelCell && panelCell.classList.contains('selected');
+
+            if (isSelected) {
+                if (panelCell) panelCell.classList.remove('selected');
+                tableCells.forEach(c => c.classList.remove('selected'));
+            } else {
+                if (panelCell) panelCell.classList.add('selected');
+                tableCells.forEach(c => c.classList.add('selected'));
+            }
+
+            highlightMatchingNumbers();
+            displayStatistics();
+        }
+
+        // === Подсветка совпадений (включено по умолчанию) ===
+        function highlightMatchingNumbers() {
+            const selectedNumbers = numberPanelCells
+                .filter(c => c.classList.contains('selected'))
+                .map(c => parseInt(c.dataset.number));
+
+            tableNumberCells.forEach(c => c.classList.remove('highlighted'));
+
+            if (selectedNumbers.length === 0) return;
+
+            tableNumberCells.forEach(cell => {
+                if (selectedNumbers.includes(parseInt(cell.dataset.number))) {
+                    cell.classList.add('highlighted');
+                }
+            });
+        }
+
+        // === Статистика (правая панель) ===
+        function displayStatistics() {
+            const container = document.getElementById('statsContainer');
+
+            const selectedNumbers = numberPanelCells
+                .filter(c => c.classList.contains('selected'))
+                .map(c => parseInt(c.dataset.number))
+                .filter(n => !isNaN(n));
+
+            const emptyHtml = '<div class="empty-stats">Выберите числа для отображения статистики</div>';
+
+            if (selectedNumbers.length === 0) {
+                container.innerHTML = emptyHtml;
+                return;
+            }
+
+            const draws = drawsMap[currentTab];
+            const stats = {};
+            selectedNumbers.forEach(n => { stats[n] = 0; });
+
+            draws.forEach(draw => {
+                draw.numbers.forEach(num => {
+                    if (selectedNumbers.includes(num)) stats[num]++;
+                });
+            });
+
+            const sorted = Object.entries(stats).sort((a, b) => b[1] - a[1]);
+
+            container.innerHTML = buildStatsHtml(sorted, draws.length, selectedNumbers.length);
+            container.scrollTop = 0;
+        }
+
+        function buildStatsHtml(sorted, totalDraws, totalSelected) {
+            let html = '<div class="stats-header"><span>Число</span><span>Кол-во выпадений</span></div>';
+            html += `<div class="empty-stats" style="margin-top:-4px;padding:0 0 8px;text-align:left;font-style:normal;">Тиражей в таблице: <b style="color:var(--fg0)">${totalDraws}</b> · выбрано чисел: <b style="color:var(--yellow)">${totalSelected}</b></div>`;
+            sorted.forEach(([num, count]) => {
+                html += `<div class="stat-item">
+                    <div class="stat-number">${num}</div>
+                    <span class="stat-count">${count} раз(а)</span>
+                </div>`;
+            });
+            return html;
+        }
+
+        // === Очистка ===
+        function clearSelections() {
+            numberPanelCells.forEach(c => c.classList.remove('selected'));
+            tableNumberCells.forEach(c => c.classList.remove('selected'));
+            highlightMatchingNumbers();
+            displayStatistics();
+        }
+
+        // === Вкладки ===
+        function switchTab(tabId) {
+            currentTab = tabId;
+            document.querySelectorAll('.tab-btn').forEach((btn) => {
+                btn.classList.toggle('active', btn.dataset.tab === tabId);
+            });
+            createDrawsTable();
+            highlightMatchingNumbers();
+            displayStatistics();
+            // Возвращаем таблицу к началу
+            const scrollArea = document.querySelector('.panel-center .panel-scroll');
+            if (scrollArea) scrollArea.scrollTop = 0;
+        }
+
+        // === Инициализация ===
+        document.addEventListener('DOMContentLoaded', () => {
+            createDrawsTable();
+            createNumberPanel();
+            displayStatistics();
+
+            document.getElementById('clearButton').addEventListener('click', clearSelections);
+
+            document.querySelectorAll('.tab-btn').forEach((btn) => {
+                btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+            });
+        });
+    </script>
+</body>
+</html>
